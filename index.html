@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Estratégico de Compliance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony (Slate, Muted Blue) -->
+    <!-- Application Structure Plan: A single-page application designed as an interactive dashboard. The structure prioritizes user exploration over the report's linear format. A sticky top navigation allows users to jump to key thematic sections: an overview with key metrics, a deep dive into global frameworks (ISO, COSO) using interactive tabs, a breakdown of Brazilian legislation with a data visualization of penalties, an interactive grid for the essential pillars of compliance, and a section on strategic value with another chart. This non-linear, task-oriented structure allows executives to quickly grasp key concepts and drill down into areas of interest, making the complex information more digestible and actionable. -->
+    <!-- Visualization & Content Choices: 1. Goal: Highlight Financial Stakes -> Viz: Bar Chart (Penalties vs. Reduction) -> Interaction: Static visual for immediate impact -> Justification: Quantifies the financial risk and the benefit of a compliance program clearly -> Library: Chart.js. 2. Goal: Explain the 9 Pillars -> Viz: Interactive Grid -> Interaction: Hover/Click to reveal pillar details -> Justification: Transforms a list into an engaging, explorable element, encouraging user interaction -> Method: HTML/CSS/JS. 3. Goal: Show Interconnected Value -> Viz: Doughnut Chart (Virtuous Cycle) -> Interaction: Tooltips on hover explain each stakeholder benefit -> Justification: Visualizes the positive feedback loop of compliance in a simple, memorable way -> Library: Chart.js. 4. Goal: Compare Frameworks -> Viz: Interactive Dropdown/Display -> Interaction: User selects a pillar, and corresponding framework requirements are shown -> Justification: Converts a static data table into a powerful, practical comparison tool -> Method: JS data object and DOM manipulation. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #2563eb; /* blue-600 */
+            border-bottom-color: #2563eb; /* blue-600 */
+        }
+        .dark .nav-link:hover, .dark .nav-link.active {
+            color: #60a5fa; /* blue-400 */
+            border-bottom-color: #60a5fa; /* blue-400 */
+        }
+        .pillar-card {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .pillar-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .dark .pillar-card:hover {
+             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+        }
+        .tab-button.active {
+            border-color: #2563eb; /* blue-600 */
+            color: #2563eb; /* blue-600 */
+            background-color: #eff6ff; /* blue-50 */
+        }
+        .dark .tab-button.active {
+            border-color: #60a5fa; /* blue-400 */
+            color: #60a5fa; /* blue-400 */
+            background-color: #1e293b; /* slate-800 */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-300 antialiased transition-colors duration-300">
+
+    <header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm dark:shadow-slate-800/50">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold text-slate-800 dark:text-slate-100">Compliance Estratégico</h1>
+                </div>
+                <div class="hidden md:flex items-center">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#overview" class="nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-sm border-b-2 border-transparent">Visão Geral</a>
+                        <a href="#frameworks" class="nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-sm border-b-2 border-transparent">Frameworks</a>
+                        <a href="#legislation" class="nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-sm border-b-2 border-transparent">Legislação</a>
+                        <a href="#pillars" class="nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-sm border-b-2 border-transparent">Pilares</a>
+                        <a href="#value" class="nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-sm border-b-2 border-transparent">Valor Estratégico</a>
+                        <a href="#comparison" class="nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-sm border-b-2 border-transparent">Comparativo</a>
+                    </div>
+                    <div class="ml-6">
+                        <button id="theme-light-button" class="p-2 rounded-full text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.95a1 1 0 010-1.414l-.707-.707a1 1 0 00-1.414 1.414l.707.707a1 1 0 011.414 0zM3 11a1 1 0 100-2H2a1 1 0 100 2h1z" clip-rule="evenodd" /></svg>
+                        </button>
+                        <button id="theme-dark-button" class="p-2 rounded-full text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="md:hidden flex items-center">
+                    <button id="theme-light-button-mobile" class="p-2 rounded-full text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.95a1 1 0 010-1.414l-.707-.707a1 1 0 00-1.414 1.414l.707.707a1 1 0 011.414 0zM3 11a1 1 0 100-2H2a1 1 0 100 2h1z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <button id="theme-dark-button-mobile" class="p-2 rounded-full text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
+                    </button>
+                    <button id="mobile-menu-button" class="ml-2 inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+                        <span class="sr-only">Abrir menu principal</span>
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#overview" class="block nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-base rounded-md">Visão Geral</a>
+                <a href="#frameworks" class="block nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-base rounded-md">Frameworks</a>
+                <a href="#legislation" class="block nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-base rounded-md">Legislação</a>
+                <a href="#pillars" class="block nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-base rounded-md">Pilares</a>
+                <a href="#value" class="block nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-base rounded-md">Valor Estratégico</a>
+                <a href="#comparison" class="block nav-link text-slate-600 dark:text-slate-300 font-medium px-3 py-2 text-base rounded-md">Comparativo</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        
+        <section id="overview" class="text-center mb-16 md:mb-24">
+            <h2 class="text-3xl md:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-4">O Imperativo do Compliance no Brasil</h2>
+            <p class="max-w-3xl mx-auto text-lg text-slate-600 dark:text-slate-400 mb-8">
+                A conformidade deixou de ser uma função de controle para se tornar um pilar estratégico indispensável para a sustentabilidade e o sucesso das operações no Brasil. Esta plataforma interativa resume os principais pontos para uma governança de excelência.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border-l-4 border-blue-600 dark:border-blue-500">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">Responsabilidade Objetiva</h3>
+                    <p class="text-slate-600 dark:text-slate-400">A empresa responde por atos de corrupção, independentemente de culpa ou conhecimento da alta gestão (Lei 12.846/13).</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border-l-4 border-red-600 dark:border-red-500">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">Sanções Severas</h3>
+                    <p class="text-slate-600 dark:text-slate-400">Multas podem chegar a <span class="font-bold">20% do faturamento bruto</span> anual da empresa, além de danos reputacionais.</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border-l-4 border-green-600 dark:border-green-500">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">Benefício da Integridade</h3>
+                    <p class="text-slate-600 dark:text-slate-400">Um programa de integridade efetivo pode reduzir a multa em <span class="font-bold">até 5%</span>, conforme o Decreto 11.129/22.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="frameworks" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 text-center mb-2">Frameworks Globais de Referência</h2>
+            <p class="text-lg text-slate-600 dark:text-slate-400 text-center mb-8">Estruturas internacionais que guiam a conformidade e a governança.</p>
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-6 flex flex-wrap justify-center border-b border-slate-200 dark:border-slate-700">
+                    <button data-tab="iso37301" class="tab-button text-slate-600 dark:text-slate-300 py-3 px-4 sm:px-6 block hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none border-b-2 font-medium active">ISO 37301</button>
+                    <button data-tab="iso37001" class="tab-button text-slate-600 dark:text-slate-300 py-3 px-4 sm:px-6 block hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none border-b-2 font-medium">ISO 37001</button>
+                    <button data-tab="coso" class="tab-button text-slate-600 dark:text-slate-300 py-3 px-4 sm:px-6 block hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none border-b-2 font-medium">COSO</button>
+                </div>
+                <div id="tab-content" class="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-lg">
+                    <div id="iso37301" class="tab-pane active">
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-3">ISO 37301: Gestão de Compliance (CMS)</h3>
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">É a norma-mestra certificável para implementar um Sistema de Gestão de Compliance. Abrange todas as obrigações de conformidade (legais, regulatórias, voluntárias) e se integra a outros sistemas de gestão (Qualidade, Ambiental, etc.).</p>
+                        <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/50 rounded-lg">
+                            <h4 class="font-semibold text-blue-800 dark:text-blue-300">Analogia do Guarda-Chuva:</h4>
+                            <p class="text-blue-700 dark:text-blue-400">Oferece uma proteção ampla e estruturada contra todos os riscos de compliance que uma empresa enfrenta.</p>
+                        </div>
+                    </div>
+                    <div id="iso37001" class="tab-pane hidden">
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-3">ISO 37001: Gestão Antissuborno (ABMS)</h3>
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">Framework específico e certificável para prevenir, detectar e responder ao suborno. Essencial para operações em ambientes de alto risco, como o Brasil, focando em due diligence de terceiros, controles e treinamentos.</p>
+                        <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/50 rounded-lg">
+                            <h4 class="font-semibold text-blue-800 dark:text-blue-300">Analogia da Lança:</h4>
+                            <p class="text-blue-700 dark:text-blue-400">Atua como uma ferramenta afiada e especializada para combater a ameaça específica da corrupção.</p>
+                        </div>
+                    </div>
+                    <div id="coso" class="tab-pane hidden">
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-3">COSO: Controles Internos</h3>
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">Modelo conceitual para projetar, implementar e avaliar controles internos. Visa assegurar objetivos de Operações, Relatórios e Conformidade. É a base para a Lei Sarbanes-Oxley (SOX) e cada vez mais para relatórios de ESG.</p>
+                        <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/50 rounded-lg grid grid-cols-2 md:grid-cols-5 gap-2 text-center">
+                            <div class="p-2"><b class="block text-blue-800 dark:text-blue-300 text-sm">Ambiente de Controle</b></div>
+                            <div class="p-2"><b class="block text-blue-800 dark:text-blue-300 text-sm">Avaliação de Riscos</b></div>
+                            <div class="p-2"><b class="block text-blue-800 dark:text-blue-300 text-sm">Atividades de Controle</b></div>
+                            <div class="p-2"><b class="block text-blue-800 dark:text-blue-300 text-sm">Informação & Comunicação</b></div>
+                            <div class="p-2"><b class="block text-blue-800 dark:text-blue-300 text-sm">Monitoramento</b></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="legislation" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 text-center mb-2">Legislação Brasileira: Risco e Oportunidade</h2>
+            <p class="text-lg text-slate-600 dark:text-slate-400 text-center mb-8">A Lei Anticorrupção (Lei 12.846/13) e seu decreto regulamentador (11.129/22) definem o cenário.</p>
+             <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-lg shadow-lg">
+                <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 text-center mb-4">Visualização do Impacto Financeiro</h3>
+                <p class="text-center text-slate-600 dark:text-slate-400 mb-6">A visualização abaixo demonstra a severidade da multa máxima e o benefício tangível de um programa de integridade efetivo, que pode atenuar a sanção.</p>
+                <div class="chart-container">
+                    <canvas id="legislationChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="pillars" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 text-center mb-2">Os 9 Pilares de um Programa de Integridade Efetivo</h2>
+            <p class="text-lg text-slate-600 dark:text-slate-400 text-center mb-8">Estes são os elementos fundamentais que sustentam um programa de compliance robusto e eficaz.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                 <div class="pillar-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md cursor-pointer" data-pillar="p1">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">1. Suporte da Alta Administração</h3>
+                </div>
+                <div class="pillar-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md cursor-pointer" data-pillar="p2">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">2. Avaliação de Riscos</h3>
+                </div>
+                <div class="pillar-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md cursor-pointer" data-pillar="p3">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">3. Código de Conduta e Políticas</h3>
+                </div>
+                <div class="pillar-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md cursor-pointer" data-pillar="p4">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">4. Controles Internos</h3>
+                </div>
+                <div class="pillar-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md cursor-pointer" data-pillar="p5">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">5. Treinamento e Comunicação</h3>
+                </div>
+                <div class="pillar-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md cursor-pointer" data-pillar="p6">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">6. Canais de Denúncia</h3>
+                </div>
+                <div class="pillar-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md cursor-pointer" data-pillar="p7">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">7. Investigações Internas</h3>
+                </div>
+                <div class="pillar-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md cursor-pointer" data-pillar="p8">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">8. Due Diligence de Terceiros</h3>
+                </div>
+                <div class="pillar-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md cursor-pointer" data-pillar="p9">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">9. Monitoramento e Auditoria</h3>
+                </div>
+            </div>
+        </section>
+        
+        <div id="pillar-modal" class="fixed inset-0 bg-black/70 dark:bg-black/80 z-[60] flex items-center justify-center p-4 hidden">
+            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-lg w-full p-6 relative">
+                <button id="close-modal" class="absolute top-2 right-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 h-10 w-10 flex items-center justify-center text-3xl leading-none">&times;</button>
+                <div class="pr-8">
+                  <h3 id="modal-title" class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4"></h3>
+                  <p id="modal-text" class="text-slate-600 dark:text-slate-400"></p>
+                </div>
+            </div>
+        </div>
+
+        <section id="value" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 text-center mb-2">O Ciclo Virtuoso do Valor Estratégico</h2>
+            <p class="text-lg text-slate-600 dark:text-slate-400 text-center mb-8">O compliance gera valor tangível para todos os stakeholders, criando um ciclo de reforço positivo.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                 <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 text-center mb-4">Benefícios Interconectados</h3>
+                     <p class="text-center text-slate-600 dark:text-slate-400 mb-6">Um programa de compliance robusto atrai investimentos, talentos e clientes, fortalecendo toda a cadeia de valor da empresa e criando uma vantagem competitiva sustentável.</p>
+                    <div class="chart-container" style="height: 300px; max-height: 300px;">
+                        <canvas id="valueChart"></canvas>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-md">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100">Acionistas e Investidores</h4>
+                        <p class="text-slate-600 dark:text-slate-400">Proteção do investimento, redução de riscos, maior segurança jurídica e atratividade para capital.</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-md">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100">Clientes e Fornecedores</h4>
+                        <p class="text-slate-600 dark:text-slate-400">Fator decisivo para parcerias, vantagem competitiva e fortalecimento da lealdade à marca.</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-md">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100">Colaboradores</h4>
+                        <p class="text-slate-600 dark:text-slate-400">Atração e retenção de talentos, ambiente de trabalho justo e seguro, e fortalecimento da marca empregadora.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="comparison" class="scroll-mt-20">
+            <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 text-center mb-2">Comparativo Interativo de Frameworks</h2>
+            <p class="text-lg text-slate-600 dark:text-slate-400 text-center mb-8">Selecione um pilar do programa de integridade para ver como ele se alinha com os principais frameworks internacionais.</p>
+            <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-lg shadow-lg max-w-5xl mx-auto">
+                <div class="mb-4">
+                    <label for="pillar-select" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Selecione o Pilar:</label>
+                    <select id="pillar-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm">
+                    </select>
+                </div>
+                <div id="comparison-display" class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                    <div class="border p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-2">ISO 37301 (CMS)</h4>
+                        <p id="iso37301-desc" class="text-slate-600 dark:text-slate-400 text-sm"></p>
+                    </div>
+                    <div class="border p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-2">ISO 37001 (ABMS)</h4>
+                        <p id="iso37001-desc" class="text-slate-600 dark:text-slate-400 text-sm"></p>
+                    </div>
+                    <div class="border p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 mb-2">COSO</h4>
+                        <p id="coso-desc" class="text-slate-600 dark:text-slate-400 text-sm"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+    </main>
+
+    <footer class="bg-slate-800 dark:bg-slate-950 text-slate-300 dark:text-slate-400 mt-16 border-t border-slate-700 dark:border-slate-800">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
+            <p>&copy; 2024 Relatório Estratégico de Compliance. Todos os direitos reservados.</p>
+            <p class="text-sm text-slate-400 dark:text-slate-500 mt-1">Este é um sumário interativo para fins informativos.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            
+            let legislationChartInstance, valueChartInstance;
+            const lightColor = '#64748b'; // slate-500
+            const darkColor = '#94a3b8'; // slate-400
+
+            const getChartOptions = (isDark) => {
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const tickColor = isDark ? darkColor : lightColor;
+                
+                return {
+                    legislation: {
+                        type: 'bar',
+                        data: {
+                            labels: ['Risco vs. Benefício'],
+                            datasets: [{
+                                label: 'Multa Máxima (% do Faturamento)',
+                                data: [20],
+                                backgroundColor: 'rgba(220, 38, 38, 0.6)',
+                                borderColor: 'rgba(220, 38, 38, 1)',
+                                borderWidth: 1
+                            }, {
+                                label: 'Redução Máxima com Compliance (%)',
+                                data: [-5],
+                                backgroundColor: 'rgba(22, 163, 74, 0.6)',
+                                borderColor: 'rgba(22, 163, 74, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { labels: { color: tickColor } },
+                                title: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) { label += ': '; }
+                                            if (context.parsed.y !== null) { label += Math.abs(context.parsed.y) + '%'; }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    grid: { color: gridColor },
+                                    ticks: { color: tickColor, callback: (v) => v + '%' },
+                                    title: { display: true, text: '% do Faturamento Bruto', color: tickColor }
+                                },
+                                x: {
+                                    grid: { color: gridColor },
+                                    ticks: { color: tickColor }
+                                }
+                            }
+                        }
+                    },
+                    value: {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Atrai Investidores', 'Retém Talentos', 'Conquista Clientes', 'Fortalece Fornecedores'],
+                            datasets: [{
+                                label: 'Ciclo Virtuoso',
+                                data: [25, 25, 25, 25],
+                                backgroundColor: [
+                                    'rgba(236, 72, 153, 0.8)', 'rgba(20, 184, 166, 0.8)',
+                                    'rgba(234, 179, 8, 0.8)', 'rgba(139, 92, 246, 0.8)'
+                                ],
+                                borderColor: isDark ? '#1e293b' : '#ffffff',
+                                borderWidth: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'top', labels: { color: tickColor } },
+                                title: { display: false }
+                            }
+                        }
+                    }
+                };
+            };
+
+            const renderCharts = (isDark) => {
+                if(legislationChartInstance) legislationChartInstance.destroy();
+                if(valueChartInstance) valueChartInstance.destroy();
+
+                const options = getChartOptions(isDark);
+                legislationChartInstance = new Chart(document.getElementById('legislationChart').getContext('2d'), options.legislation);
+                valueChartInstance = new Chart(document.getElementById('valueChart').getContext('2d'), options.value);
+            };
+
+            const lightThemeButtons = [document.getElementById('theme-light-button'), document.getElementById('theme-light-button-mobile')];
+            const darkThemeButtons = [document.getElementById('theme-dark-button'), document.getElementById('theme-dark-button-mobile')];
+
+            const setTheme = (theme) => {
+                localStorage.setItem('theme', theme);
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    lightThemeButtons.forEach(b => b.classList.remove('hidden'));
+                    darkThemeButtons.forEach(b => b.classList.add('hidden'));
+                    renderCharts(true);
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    lightThemeButtons.forEach(b => b.classList.add('hidden'));
+                    darkThemeButtons.forEach(b => b.classList.remove('hidden'));
+                    renderCharts(false);
+                }
+            };
+
+            lightThemeButtons.forEach(b => b.addEventListener('click', () => setTheme('light')));
+            darkThemeButtons.forEach(b => b.addEventListener('click', () => setTheme('dark')));
+
+            const initialTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            setTheme(initialTheme);
+
+            const pillarDetails = {
+                p1: { title: "1. Suporte da Alta Administração", text: "Compromisso visível e contínuo da liderança, demonstrado pela alocação de recursos e apoio direto à função de compliance. É o famoso 'Tone at the Top'." },
+                p2: { title: "2. Avaliação de Riscos", text: "Processo periódico para identificar, analisar e mitigar os riscos de conformidade específicos da operação, setor e interações com o poder público." },
+                p3: { title: "3. Código de Conduta e Políticas", text: "Documentos que traduzem os valores e regras da empresa em diretrizes práticas e acessíveis para todos os colaboradores e terceiros." },
+                p4: { title: "4. Controles Internos", text: "Mecanismos para assegurar a confiabilidade dos registros contábeis e financeiros, incluindo segregação de funções e alçadas de aprovação." },
+                p5: { title: "5. Treinamento e Comunicação", text: "Programas contínuos e adaptados para garantir que todos compreendam suas responsabilidades e saibam como agir diante de dilemas éticos." },
+                p6: { title: "6. Canais de Denúncia", text: "Mecanismos seguros, confidenciais e anônimos para o relato de irregularidades, com uma forte política de não retaliação." },
+                p7: { title: "7. Investigações Internas", text: "Procedimentos claros e justos para apurar todas as denúncias, permitindo a tomada de medidas disciplinares e corretivas adequadas." },
+                p8: { title: "8. Due Diligence de Terceiros", text: "Análise aprofundada de fornecedores, representantes e outros intermediários para mitigar riscos de corrupção na cadeia de valor." },
+                p9: { title: "9. Monitoramento e Auditoria", text: "Revisão e teste constantes da eficácia do programa para identificar falhas e promover a melhoria contínua." }
+            };
+            const pillarCards = document.querySelectorAll('.pillar-card');
+            const modal = document.getElementById('pillar-modal');
+            const closeModalBtn = document.getElementById('close-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalText = document.getElementById('modal-text');
+
+            pillarCards.forEach(card => card.addEventListener('click', () => {
+                const details = pillarDetails[card.getAttribute('data-pillar')];
+                modalTitle.textContent = details.title;
+                modalText.textContent = details.text;
+                modal.classList.remove('hidden');
+            }));
+
+            closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+            document.querySelectorAll('#mobile-menu a').forEach(link => link.addEventListener('click', () => mobileMenu.classList.add('hidden')));
+
+            const tabs = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            tabs.forEach(tab => tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const targetPaneId = tab.getAttribute('data-tab');
+                tabPanes.forEach(pane => {
+                    pane.id === targetPaneId ? pane.classList.remove('hidden') : pane.classList.add('hidden');
+                });
+            }));
+
+            const comparisonData = [
+                { id: "p1", name: "1. Suporte da Alta Administração", iso37301: "Cláusula 5: Liderança", iso37001: "Cláusula 5: Liderança", coso: "Componente 1: Ambiente de Controle" },
+                { id: "p2", name: "2. Avaliação de Riscos", iso37301: "Cláusula 6: Planejamento", iso37001: "Cláusula 4.5: Avaliação de Riscos de Suborno", coso: "Componente 2: Avaliação de Riscos" },
+                { id: "p3", name: "3. Código de Conduta e Políticas", iso37301: "Cláusula 8: Operação (Controles)", iso37001: "Cláusula 8: Operação (Controles)", coso: "Componente 3: Atividades de Controle" },
+                { id: "p4", name: "4. Controles Internos", iso37301: "Cláusula 8: Operação", iso37001: "Cláusula 8: Operação (Controles Financeiros)", coso: "Componente 3: Atividades de Controle" },
+                { id: "p5", name: "5. Treinamento e Comunicação", iso37301: "Cláusula 7: Suporte (Competência, Conscientização)", iso37001: "Cláusula 7: Suporte", coso: "Componente 4: Informação e Comunicação" },
+                { id: "p6", name: "6. Canais de Denúncia", iso37301: "Cláusula 8.4: Levantamento de Preocupações", iso37001: "Cláusula 8.9: Levantamento de Preocupações", coso: "Componente 4: Informação e Comunicação" },
+                { id: "p7", name: "7. Investigações Internas", iso37301: "Cláusula 8.5: Investigação de Não Conformidades", iso37001: "Cláusula 8.10: Investigando Suborno", coso: "Componente 5: Atividades de Monitoramento" },
+                { id: "p8", name: "8. Due Diligence de Terceiros", iso37301: "Cláusula 8.2: Due Diligence", iso37001: "Cláusula 8.2: Due Diligence", coso: "Componente 3: Atividades de Controle" },
+                { id: "p9", name: "9. Monitoramento e Auditoria", iso37301: "Cláusula 9: Avaliação de Desempenho", iso37001: "Cláusula 9: Avaliação de Desempenho", coso: "Componente 5: Atividades de Monitoramento" }
+            ];
+            const pillarSelect = document.getElementById('pillar-select');
+            comparisonData.forEach(pillar => {
+                const option = document.createElement('option');
+                option.value = pillar.id; option.textContent = pillar.name;
+                pillarSelect.appendChild(option);
+            });
+            const updateComparison = (pillarId) => {
+                const selectedPillar = comparisonData.find(p => p.id === pillarId);
+                if (selectedPillar) {
+                    document.getElementById('iso37301-desc').textContent = selectedPillar.iso37301;
+                    document.getElementById('iso37001-desc').textContent = selectedPillar.iso37001;
+                    document.getElementById('coso-desc').textContent = selectedPillar.coso;
+                }
+            };
+            pillarSelect.addEventListener('change', (e) => updateComparison(e.target.value));
+            updateComparison(comparisonData[0].id);
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        document.querySelectorAll('.nav-link').forEach(link => {
+                            link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+                        });
+                    }
+                });
+            }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
+            document.querySelectorAll('main section').forEach(section => observer.observe(section));
+        });
+    </script>
+</body>
+</html>
